@@ -21,27 +21,15 @@ export function MarketingNav() {
 
         <nav className="hidden items-center gap-6 text-sm text-slate-300 md:flex">
           {links.map(([label, href]) => (
-            <a key={href} href={href} className="hover:text-white">
-              {label}
-            </a>
+            <a key={href} href={href} className="hover:text-white">{label}</a>
           ))}
-          <Link href="/hospital/login" className="hover:text-white">
-            Hospital Portal
-          </Link>
-          <Link href="/login" className="hover:text-white">
-            Login
-          </Link>
-          <Link href="/signup" className="btn-primary px-4 py-2.5">
-            Get Started
-          </Link>
+          <Link href="/hospital/login" className="hover:text-white">Hospital Portal</Link>
+          <Link href="/admin/login" className="hover:text-white">Admin</Link>
+          <Link href="/login" className="hover:text-white">Login</Link>
+          <Link href="/signup" className="btn-primary px-4 py-2.5">Get Started</Link>
         </nav>
 
-        <button
-          className="btn-ghost px-3 py-2 md:hidden"
-          onClick={() => setOpen((value) => !value)}
-          aria-label="Toggle navigation"
-          aria-expanded={open}
-        >
+        <button className="btn-ghost px-3 py-2 md:hidden" onClick={() => setOpen(value => !value)} aria-label="Toggle navigation" aria-expanded={open}>
           {open ? <X size={20} /> : <Menu size={20} />}
         </button>
       </div>
@@ -50,36 +38,12 @@ export function MarketingNav() {
         <div className="border-t border-white/10 bg-[#071426] md:hidden">
           <div className="shell flex flex-col gap-2 py-4">
             {links.map(([label, href]) => (
-              <a
-                key={href}
-                href={href}
-                onClick={() => setOpen(false)}
-                className="rounded-xl px-3 py-3 text-slate-300"
-              >
-                {label}
-              </a>
+              <a key={href} href={href} onClick={() => setOpen(false)} className="rounded-xl px-3 py-3 text-slate-300">{label}</a>
             ))}
-            <Link
-              href="/hospital/login"
-              className="rounded-xl px-3 py-3"
-              onClick={() => setOpen(false)}
-            >
-              Hospital Portal
-            </Link>
-            <Link
-              href="/login"
-              className="rounded-xl px-3 py-3"
-              onClick={() => setOpen(false)}
-            >
-              Login
-            </Link>
-            <Link
-              href="/signup"
-              className="btn-primary"
-              onClick={() => setOpen(false)}
-            >
-              Get Started
-            </Link>
+            <Link href="/hospital/login" className="rounded-xl px-3 py-3" onClick={() => setOpen(false)}>Hospital Portal</Link>
+            <Link href="/admin/login" className="rounded-xl px-3 py-3" onClick={() => setOpen(false)}>Admin Console</Link>
+            <Link href="/login" className="rounded-xl px-3 py-3" onClick={() => setOpen(false)}>Login</Link>
+            <Link href="/signup" className="btn-primary" onClick={() => setOpen(false)}>Get Started</Link>
           </div>
         </div>
       )}
