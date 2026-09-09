@@ -4,6 +4,22 @@
 
 alter table public.profiles add column if not exists role text not null default 'user';
 
+-- Secure role check for the admin login. It avoids relying on client-side profile visibility.
+create or replace function public.is_sahayak_admin()
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from public.profiles p
+    where p.id = auth.uid() and p.role = 'admin'
+  );
+$$;
+revoke execute on function public.is_sahayak_admin() from public, anon;
+grant execute on function public.is_sahayak_admin() to authenticated;
+
 -- Admins can review every hospital application, while normal users can only see their own.
 drop policy if exists "admin applications read" on public.hospital_applications;
 create policy "admin applications read" on public.hospital_applications
@@ -58,13 +74,10 @@ begin
 end;
 $$;
 
--- The older hospital migration revoked this function from browser roles.
--- Re-granting is safe because the function itself now verifies role='admin'.
 revoke execute on function public.approve_hospital_application(uuid,uuid) from public, anon;
 grant execute on function public.approve_hospital_application(uuid,uuid) to authenticated;
 revoke execute on function public.reject_hospital_application(uuid) from public, anon;
 grant execute on function public.reject_hospital_application(uuid) to authenticated;
 
--- IMPORTANT: after creating your admin Auth account, run the one-line promotion below
--- with your real Auth user UUID. Do NOT put an admin password in source code.
+-- IMPORTANT: after creating your admin Auth account, promote it with SQL; never put an admin password in source code.
 -- update public.profiles set role='admin', hospital_id=null where id='<YOUR_AUTH_USER_UUID>';
