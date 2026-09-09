@@ -1,5 +1,7 @@
--- Sahayak connected hospital emergency network
--- Run this ONCE in Supabase SQL Editor after schema.sql.
+-- ============================================
+-- SAHAYAK CONNECTED HOSPITAL EMERGENCY NETWORK
+-- Run ONCE in Supabase SQL Editor after schema.sql.
+-- ============================================
 
 create table if not exists public.hospitals (
   id uuid primary key default gen_random_uuid(),
@@ -14,6 +16,7 @@ create table if not exists public.hospitals (
 
 alter table public.profiles add column if not exists role text not null default 'user';
 alter table public.profiles add column if not exists hospital_id uuid references public.hospitals(id) on delete set null;
+alter table public.profiles add column if not exists last_seen_at timestamptz;
 
 create table if not exists public.emergency_cases (
   id uuid primary key default gen_random_uuid(),
@@ -42,19 +45,39 @@ create index if not exists emergency_cases_patient_idx on public.emergency_cases
 alter table public.hospitals enable row level security;
 alter table public.emergency_cases enable row level security;
 
+drop policy if exists "hospitals authenticated read" on public.hospitals;
 create policy "hospitals authenticated read" on public.hospitals for select using (auth.role() = 'authenticated');
 
+drop policy if exists "cases patient read" on public.emergency_cases;
 create policy "cases patient read" on public.emergency_cases for select using (auth.uid() = patient_id);
+
+drop policy if exists "cases hospital staff read" on public.emergency_cases;
 create policy "cases hospital staff read" on public.emergency_cases for select using (
   exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'hospital_staff' and p.hospital_id = emergency_cases.hospital_id)
 );
+
+drop policy if exists "cases hospital staff update" on public.emergency_cases;
 create policy "cases hospital staff update" on public.emergency_cases for update using (
   exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'hospital_staff' and p.hospital_id = emergency_cases.hospital_id)
 ) with check (
   exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'hospital_staff' and p.hospital_id = emergency_cases.hospital_id)
 );
 
--- Automatically create and route a case whenever an authenticated user's SOS is recorded.
+-- Hospital staff heartbeat. Only an already-verified hospital staff account can mark itself online.
+create or replace function public.hospital_heartbeat()
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  update public.profiles
+  set last_seen_at = now()
+  where id = auth.uid()
+    and role = 'hospital_staff'
+    and hospital_id is not null;
+end;
+$$;
+
+grant execute on function public.hospital_heartbeat() to authenticated;
+
+-- Automatically route every SOS to the nearest hospital that is both available and currently online.
 create or replace function public.route_sos_to_hospital()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare
@@ -69,7 +92,17 @@ begin
   select h.id into nearest_hospital
   from public.hospitals h
   where h.available = true
-  order by case when new.latitude is null or new.longitude is null then 0 else ((h.latitude-new.latitude)^2 + (h.longitude-new.longitude)^2) end
+    and exists (
+      select 1 from public.profiles hp
+      where hp.role = 'hospital_staff'
+        and hp.hospital_id = h.id
+        and hp.last_seen_at > now() - interval '2 minutes'
+    )
+  order by
+    case
+      when new.latitude is null or new.longitude is null then 0
+      else ((h.latitude-new.latitude)^2 + (h.longitude-new.longitude)^2)
+    end
   limit 1;
 
   select p.full_name into patient_name_value from public.profiles p where p.id = new.user_id;
@@ -95,7 +128,6 @@ create trigger after_sos_route_to_hospital
 after insert on public.sos_events
 for each row execute procedure public.route_sos_to_hospital();
 
--- Realtime feed for hospital dashboards.
 do $$
 begin
   if not exists (
@@ -106,7 +138,7 @@ begin
   end if;
 end $$;
 
--- Starter hospital for hackathon testing. Replace/edit this record with real partner hospitals later.
+-- Starter hospital for hackathon testing. Replace/edit this record with a real authorized partner later.
 insert into public.hospitals (name,address,phone,latitude,longitude,available)
 select 'Sahayak Demo Hospital','Mangaluru, Karnataka','112',12.9141,74.8560,true
 where not exists (select 1 from public.hospitals where name='Sahayak Demo Hospital');
