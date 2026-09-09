@@ -1,6 +1,6 @@
 -- SAHAYAK HOSPITAL NETWORK V2
 -- Run AFTER schema.sql and hospital_emergency.sql.
--- Adds separate hospital onboarding, capacity, availability, recommendations, services and estimates.
+-- Adds separate hospital onboarding, capacity, live availability, recommendations, services and estimates.
 
 alter table public.hospitals add column if not exists emergency_available boolean not null default true;
 alter table public.hospitals add column if not exists ambulance_available boolean not null default false;
@@ -16,6 +16,8 @@ alter table public.hospitals add column if not exists pharmacy_24x7 boolean not 
 alter table public.hospitals add column if not exists diagnostics_24x7 boolean not null default false;
 alter table public.hospitals add column if not exists cashless_insurance boolean not null default false;
 alter table public.hospitals add column if not exists estimated_wait_minutes integer not null default 30;
+alter table public.hospitals add column if not exists online boolean not null default false;
+alter table public.hospitals add column if not exists last_online_at timestamptz;
 
 create table if not exists public.hospital_applications (
   id uuid primary key default gen_random_uuid(), user_id uuid not null unique references auth.users(id) on delete cascade,
@@ -63,13 +65,29 @@ begin
   update public.profiles set role='hospital_staff',hospital_id=p_hospital_id where id=applicant;
 end;
 $$;
+-- Approval is an administrative action; never expose it to browser roles.
+revoke execute on function public.approve_hospital_application(uuid,uuid) from public,anon,authenticated;
+
+create or replace function public.hospital_heartbeat()
+returns void language plpgsql security definer set search_path=public as $$
+declare hid uuid;
+begin
+  select hospital_id into hid from public.profiles where id=auth.uid() and role='hospital_staff' and hospital_id is not null;
+  if hid is not null then
+    update public.profiles set last_seen_at=now() where id=auth.uid();
+    update public.hospitals set online=true,last_online_at=now() where id=hid;
+  end if;
+end;
+$$;
+grant execute on function public.hospital_heartbeat() to authenticated;
 
 create or replace function public.route_sos_to_hospital()
 returns trigger language plpgsql security definer set search_path=public as $$
 declare selected_hospital uuid; patient_name_value text; blood_group_value text; allergies_value text; conditions_value text; contact_name_value text; contact_phone_value text;
 begin
   select h.id into selected_hospital from public.hospitals h
-  where h.available=true and h.emergency_available=true and exists (select 1 from public.profiles hp where hp.role='hospital_staff' and hp.hospital_id=h.id and hp.last_seen_at>now()-interval '2 minutes')
+  where h.available=true and h.emergency_available=true and h.online=true and h.last_online_at>now()-interval '2 minutes'
+    and exists (select 1 from public.profiles hp where hp.role='hospital_staff' and hp.hospital_id=h.id and hp.last_seen_at>now()-interval '2 minutes')
   order by (
     case when new.latitude is null or new.longitude is null then 0 else 1/(1+sqrt(power((h.latitude-new.latitude)*111,2)+power((h.longitude-new.longitude)*111*cos(radians(coalesce(new.latitude,h.latitude))),2))) end
     + case when h.icu_beds_available>0 then .25 else 0 end
