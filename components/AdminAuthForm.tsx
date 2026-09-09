@@ -25,13 +25,12 @@ export function AdminAuthForm() {
       return;
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user?.id || '').maybeSingle();
-    if (profile?.role === 'admin') {
+    const { data: isAdmin, error: roleError } = await supabase.rpc('is_sahayak_admin');
+    if (!roleError && isAdmin === true) {
       router.push('/admin');
     } else {
       await supabase.auth.signOut();
-      setError('This account is not an approved Sahayak admin account.');
+      setError(roleError?.message || 'This account is not an approved Sahayak admin account.');
     }
     setLoading(false);
   };
