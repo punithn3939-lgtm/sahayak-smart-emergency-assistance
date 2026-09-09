@@ -22,11 +22,17 @@ export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   if (!user && path.startsWith('/dashboard')) return NextResponse.redirect(new URL('/login', request.url));
+  if (!user && path.startsWith('/hospitals')) return NextResponse.redirect(new URL('/login', request.url));
+  if (!user && path.startsWith('/admin') && path !== '/admin/login') return NextResponse.redirect(new URL('/admin/login', request.url));
   if (!user && path.startsWith('/hospital') && !path.startsWith('/hospital/login') && !path.startsWith('/hospital/signup')) return NextResponse.redirect(new URL('/hospital/login', request.url));
 
   if (user) {
     const { data: profile } = await supabase.from('profiles').select('role,hospital_id').eq('id', user.id).maybeSingle();
     const hospitalStaff = profile?.role === 'hospital_staff' && !!profile?.hospital_id;
+    const admin = profile?.role === 'admin';
+    if (!admin && path.startsWith('/admin') && path !== '/admin/login') return NextResponse.redirect(new URL('/admin/login', request.url));
+    if (admin && path === '/admin/login') return NextResponse.redirect(new URL('/admin', request.url));
+    if (admin && ['/login','/signup'].includes(path)) return NextResponse.redirect(new URL('/admin', request.url));
     if (hospitalStaff && ['/login','/signup'].includes(path)) return NextResponse.redirect(new URL('/hospital', request.url));
     if (hospitalStaff && ['/hospital/login','/hospital/signup'].includes(path)) return NextResponse.redirect(new URL('/hospital', request.url));
     if (hospitalStaff && path.startsWith('/dashboard')) return NextResponse.redirect(new URL('/hospital', request.url));
