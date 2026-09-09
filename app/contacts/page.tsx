@@ -1,0 +1,2 @@
+import { createClient } from '@/lib/supabase/server'; import { redirect } from 'next/navigation'; import ContactsClient from './ContactsClient';
+export default async function Page(){const s=await createClient();const {data:{user}}=await s.auth.getUser();if(!user)redirect('/login');const {data}=await s.from('emergency_contacts').select('*').order('created_at',{ascending:false});return <ContactsClient initial={data||[]}/>}

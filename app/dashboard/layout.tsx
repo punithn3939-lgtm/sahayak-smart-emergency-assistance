@@ -1,0 +1,2 @@
+import { createClient } from '@/lib/supabase/server'; import { redirect } from 'next/navigation'; import { DashboardShell } from '@/components/DashboardShell';
+export default async function Layout({children}:{children:React.ReactNode}){const s=await createClient();const {data:{user}}=await s.auth.getUser();if(!user)redirect('/login');const {data:p}=await s.from('profiles').select('full_name').eq('id',user.id).maybeSingle();return <DashboardShell userName={p?.full_name||user.user_metadata?.full_name||user.email||'User'}>{children}</DashboardShell>}

@@ -1,0 +1,2 @@
+import { createClient } from '@/lib/supabase/server'; import { redirect } from 'next/navigation'; import DashboardClient from './DashboardClient';
+export default async function Page(){const supabase=await createClient();const {data:{user}}=await supabase.auth.getUser();if(!user)redirect('/login');const {data:profile}=await supabase.from('profiles').select('full_name,phone').eq('id',user.id).maybeSingle();return <DashboardClient userId={user.id} userName={profile?.full_name||user.user_metadata?.full_name||user.email?.split('@')[0]||'there'} />}

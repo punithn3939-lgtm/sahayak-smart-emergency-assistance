@@ -1,0 +1,2 @@
+import { createClient } from '@/lib/supabase/server'; import { redirect } from 'next/navigation'; import ProfileClient from './ProfileClient';
+export default async function Page(){const s=await createClient();const {data:{user}}=await s.auth.getUser();if(!user)redirect('/login');const {data}=await s.from('profiles').select('*').eq('id',user.id).maybeSingle();return <ProfileClient initial={data} email={user.email||''}/>}
