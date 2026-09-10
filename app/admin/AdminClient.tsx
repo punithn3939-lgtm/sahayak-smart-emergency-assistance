@@ -3,83 +3,23 @@ import { useCallback, useEffect, useState } from 'react';
 import { CheckCircle2, Clock3, LogOut, RefreshCw, ShieldCheck, XCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { BackButton } from '@/components/BackButton';
 
-type Application = {
-  id: string;
-  user_id: string;
-  hospital_name: string;
-  contact_name: string;
-  phone: string | null;
-  registration_number: string | null;
-  address: string | null;
-  status: string;
-  hospital_id: string | null;
-  created_at: string;
-  reviewed_at: string | null;
-};
-
-type Hospital = { id: string; name: string; address: string | null; available: boolean };
+type Application = { id:string; user_id:string; hospital_name:string; contact_name:string; phone:string|null; registration_number:string|null; address:string|null; status:string; hospital_id:string|null; created_at:string; reviewed_at:string|null };
+type Hospital = { id:string; name:string; address:string|null; available:boolean };
 
 export default function AdminClient({ adminEmail }: { adminEmail: string }) {
   const router = useRouter();
-  const [applications, setApplications] = useState<Application[]>([]);
-  const [hospitals, setHospitals] = useState<Hospital[]>([]);
-  const [selectedHospital, setSelectedHospital] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [working, setWorking] = useState('');
-  const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    const supabase = createClient();
-    const [{ data: apps, error: appsError }, { data: hs, error: hospitalsError }] = await Promise.all([
-      supabase.from('hospital_applications').select('*').order('created_at', { ascending: false }),
-      supabase.from('hospitals').select('id,name,address,available').order('name')
-    ]);
-    if (appsError) setError(appsError.message);
-    if (hospitalsError) setError(hospitalsError.message);
-    setApplications((apps || []) as Application[]);
-    setHospitals((hs || []) as Hospital[]);
-    if (!selectedHospital && hs?.[0]) setSelectedHospital(hs[0].id);
-    setLoading(false);
-  }, [selectedHospital]);
-
-  useEffect(() => { load(); }, [load]);
-
-  const approve = async (id: string) => {
-    if (!selectedHospital) { setError('Select a hospital before approving.'); return; }
-    setWorking(id); setError(''); setMessage('');
-    const supabase = createClient();
-    const { error: rpcError } = await supabase.rpc('approve_hospital_application', { p_application_id: id, p_hospital_id: selectedHospital });
-    if (rpcError) setError(rpcError.message);
-    else { setMessage('Hospital application approved. The staff account can now sign in.'); await load(); }
-    setWorking('');
-  };
-
-  const reject = async (id: string) => {
-    setWorking(id); setError(''); setMessage('');
-    const supabase = createClient();
-    const { error: rpcError } = await supabase.rpc('reject_hospital_application', { p_application_id: id });
-    if (rpcError) setError(rpcError.message);
-    else { setMessage('Hospital application rejected.'); await load(); }
-    setWorking('');
-  };
-
-  const signOut = async () => { await createClient().auth.signOut(); router.push('/admin/login'); };
-  const pending = applications.filter(a => a.status === 'PENDING');
-  const approved = applications.filter(a => a.status === 'APPROVED');
-
-  return <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(47,128,237,.12),transparent_42%)] px-5 py-8"><div className="mx-auto max-w-6xl space-y-6">
-    <header className="card flex flex-col justify-between gap-5 p-6 sm:flex-row sm:items-center"><div><p className="text-xs font-semibold uppercase tracking-[.2em] text-blue">Sahayak administration</p><h1 className="mt-2 text-3xl font-black">Hospital approval console</h1><p className="mt-2 text-sm text-slate-400">Signed in as {adminEmail}</p></div><button className="btn-ghost" onClick={signOut}><LogOut size={16}/>Sign out</button></header>
-    {error && <div className="rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-200">{error}</div>}
-    {message && <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">{message}</div>}
+  const [applications,setApplications]=useState<Application[]>([]); const [hospitals,setHospitals]=useState<Hospital[]>([]); const [selectedHospital,setSelectedHospital]=useState(''); const [loading,setLoading]=useState(true); const [working,setWorking]=useState(''); const [error,setError]=useState(''); const [message,setMessage]=useState('');
+  const load=useCallback(async()=>{setLoading(true);setError('');const supabase=createClient();const [{data:apps,error:appsError},{data:hs,error:hospitalsError}]=await Promise.all([supabase.from('hospital_applications').select('*').order('created_at',{ascending:false}),supabase.from('hospitals').select('id,name,address,available').order('name')]);if(appsError)setError(appsError.message);if(hospitalsError)setError(hospitalsError.message);setApplications((apps||[]) as Application[]);setHospitals((hs||[]) as Hospital[]);if(!selectedHospital&&hs?.[0])setSelectedHospital(hs[0].id);setLoading(false)},[selectedHospital]);
+  useEffect(()=>{load()},[load]);
+  const approve=async(id:string)=>{if(!selectedHospital){setError('Select a hospital before approving.');return}setWorking(id);setError('');setMessage('');const supabase=createClient();const {error:rpcError}=await supabase.rpc('approve_hospital_application',{p_application_id:id,p_hospital_id:selectedHospital});if(rpcError)setError(rpcError.message);else{setMessage('Hospital application approved. The staff account can now sign in.');await load()}setWorking('')};
+  const reject=async(id:string)=>{setWorking(id);setError('');setMessage('');const supabase=createClient();const {error:rpcError}=await supabase.rpc('reject_hospital_application',{p_application_id:id});if(rpcError)setError(rpcError.message);else{setMessage('Hospital application rejected.');await load()}setWorking('')};
+  const signOut=async()=>{await createClient().auth.signOut();router.push('/admin/login')};
+  const pending=applications.filter(a=>a.status==='PENDING'); const approved=applications.filter(a=>a.status==='APPROVED');
+  return <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(47,128,237,.12),transparent_42%)] px-5 py-8"><div className="mx-auto max-w-6xl space-y-6"><div><BackButton fallback="/admin/login"/></div><header className="card flex flex-col justify-between gap-5 p-6 sm:flex-row sm:items-center"><div><p className="text-xs font-semibold uppercase tracking-[.2em] text-blue">Sahayak administration</p><h1 className="mt-2 text-3xl font-black">Hospital approval console</h1><p className="mt-2 text-sm text-slate-400">Signed in as {adminEmail}</p></div><button className="btn-ghost" onClick={signOut}><LogOut size={16}/>Sign out</button></header>
+    {error&&<div className="rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-200">{error}</div>}{message&&<div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">{message}</div>}
     <div className="grid gap-4 sm:grid-cols-3"><div className="card p-5"><p className="text-xs text-slate-500">PENDING APPLICATIONS</p><p className="mt-2 text-3xl font-black text-amber-200">{pending.length}</p></div><div className="card p-5"><p className="text-xs text-slate-500">APPROVED</p><p className="mt-2 text-3xl font-black text-emerald-300">{approved.length}</p></div><div className="card p-5"><p className="text-xs text-slate-500">CONNECTED HOSPITALS</p><p className="mt-2 text-3xl font-black">{hospitals.length}</p></div></div>
-    <section className="card p-6"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="flex items-center gap-2"><ShieldCheck className="text-blue" size={20}/><h2 className="text-xl font-black">Review hospital registrations</h2></div><p className="mt-2 text-sm text-slate-500">Approval is required before a hospital staff account can access patient emergency cases.</p></div><button className="btn-ghost" onClick={load} disabled={loading}><RefreshCw size={16} className={loading?'animate-spin':''}/>Refresh</button></div>
-      <div className="mt-5 rounded-2xl border border-white/10 bg-white/[.03] p-4"><label className="label">Assign approved staff to hospital</label><select className="field" value={selectedHospital} onChange={e=>setSelectedHospital(e.target.value)}><option value="">Select hospital</option>{hospitals.map(h=><option key={h.id} value={h.id}>{h.name} — {h.available?'open':'closed'}</option>)}</select><p className="mt-2 text-xs text-slate-500">For the hackathon demo, use the seeded Sahayak Demo Hospital. Real partner hospitals should be onboarded only with authorization.</p></div>
-      <div className="mt-6 space-y-4">{loading?<div className="py-10 text-center text-slate-500">Loading applications…</div>:pending.length===0?<div className="rounded-2xl bg-white/[.03] p-8 text-center"><CheckCircle2 className="mx-auto text-emerald-300"/><p className="mt-3 font-bold">No pending applications</p><p className="mt-1 text-sm text-slate-500">New hospital registrations will appear here.</p></div>:pending.map(a=><div key={a.id} className="rounded-2xl border border-white/10 bg-white/[.03] p-5"><div className="flex flex-col justify-between gap-4 lg:flex-row"><div><div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-200"><Clock3 size={13} className="mr-1 inline"/>PENDING</span><span className="font-mono text-xs text-slate-500">{a.id}</span></div><h3 className="mt-3 text-xl font-black">{a.hospital_name}</h3><p className="mt-1 text-sm text-slate-300">Staff: {a.contact_name}</p><p className="mt-1 text-sm text-slate-500">{a.address || 'Address not provided'}{a.phone ? ` · ${a.phone}` : ''}</p><p className="mt-1 text-xs text-slate-600">Registration / license: {a.registration_number || 'Not provided'} · Submitted {new Date(a.created_at).toLocaleString()}</p></div><div className="flex flex-wrap gap-2 lg:max-w-xs lg:justify-end"><button className="btn-primary" disabled={working===a.id} onClick={()=>approve(a.id)}>{working===a.id?'Working…':<><CheckCircle2 size={16}/>Approve & connect</>}</button><button className="btn-ghost" disabled={working===a.id} onClick={()=>reject(a.id)}><XCircle size={16}/>Reject</button></div></div></div>)}</div>
-    </section>
-    <section className="card p-6"><h2 className="text-xl font-black">Application history</h2><div className="mt-4 space-y-2">{applications.filter(a=>a.status!=='PENDING').slice(0,10).map(a=><div key={a.id} className="flex flex-col justify-between gap-2 rounded-xl bg-white/[.03] p-4 sm:flex-row"><div><p className="font-bold">{a.hospital_name}</p><p className="text-xs text-slate-500">{a.contact_name} · {a.reviewed_at?new Date(a.reviewed_at).toLocaleString():'—'}</p></div><span className={a.status==='APPROVED'?'text-emerald-300':'text-red-300'}>{a.status}</span></div>)}{!applications.some(a=>a.status!=='PENDING')&&<p className="text-sm text-slate-500">No reviewed applications yet.</p>}</div></section>
-  </div></main>;
+    <section className="card p-6"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="flex items-center gap-2"><ShieldCheck className="text-blue" size={20}/><h2 className="text-xl font-black">Review hospital registrations</h2></div><p className="mt-2 text-sm text-slate-500">Approval is required before a hospital staff account can access patient emergency cases.</p></div><button className="btn-ghost" onClick={load} disabled={loading}><RefreshCw size={16} className={loading?'animate-spin':''}/>Refresh</button></div><div className="mt-5 rounded-2xl border border-white/10 bg-white/[.03] p-4"><label className="label">Assign approved staff to hospital</label><select className="field" value={selectedHospital} onChange={e=>setSelectedHospital(e.target.value)}><option value="">Select hospital</option>{hospitals.map(h=><option key={h.id} value={h.id}>{h.name} — {h.available?'open':'closed'}</option>)}</select><p className="mt-2 text-xs text-slate-500">For the hackathon demo, use the seeded Sahayak Demo Hospital. Real partner hospitals should be onboarded only with authorization.</p></div><div className="mt-6 space-y-4">{loading?<div className="py-10 text-center text-slate-500">Loading applications…</div>:pending.length===0?<div className="rounded-2xl bg-white/[.03] p-8 text-center"><CheckCircle2 className="mx-auto text-emerald-300"/><p className="mt-3 font-bold">No pending applications</p><p className="mt-1 text-sm text-slate-500">New hospital registrations will appear here.</p></div>:pending.map(a=><div key={a.id} className="rounded-2xl border border-white/10 bg-white/[.03] p-5"><div className="flex flex-col justify-between gap-4 lg:flex-row"><div><div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-200"><Clock3 size={13} className="mr-1 inline"/>PENDING</span><span className="font-mono text-xs text-slate-500">{a.id}</span></div><h3 className="mt-3 text-xl font-black">{a.hospital_name}</h3><p className="mt-1 text-sm text-slate-300">Staff: {a.contact_name}</p><p className="mt-1 text-sm text-slate-500">{a.address||'Address not provided'}{a.phone?` · ${a.phone}`:''}</p><p className="mt-1 text-xs text-slate-600">Registration / license: {a.registration_number||'Not provided'} · Submitted {new Date(a.created_at).toLocaleString()}</p></div><div className="flex flex-wrap gap-2 lg:max-w-xs lg:justify-end"><button className="btn-primary" disabled={working===a.id} onClick={()=>approve(a.id)}>{working===a.id?'Working…':<><CheckCircle2 size={16}/>Approve & connect</>}</button><button className="btn-ghost" disabled={working===a.id} onClick={()=>reject(a.id)}><XCircle size={16}/>Reject</button></div></div></div>)}</div></section>
+    <section className="card p-6"><h2 className="text-xl font-black">Application history</h2><div className="mt-4 space-y-2">{applications.filter(a=>a.status!=='PENDING').slice(0,10).map(a=><div key={a.id} className="flex flex-col justify-between gap-2 rounded-xl bg-white/[.03] p-4 sm:flex-row"><div><p className="font-bold">{a.hospital_name}</p><p className="text-xs text-slate-500">{a.contact_name} · {a.reviewed_at?new Date(a.reviewed_at).toLocaleString():'—'}</p></div><span className={a.status==='APPROVED'?'text-emerald-300':'text-red-300'}>{a.status}</span></div>)}{!applications.some(a=>a.status!=='PENDING')&&<p className="text-sm text-slate-500">No reviewed applications yet.</p>}</div></section></div></main>;
 }
